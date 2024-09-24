@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Підприємство</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+</head>
+
+<body class="container mt-4">
+    <h1 class="mb-4">Керування колекціями</h1>
+
+    <div class="mb-3">
+        <div class="input-group">
+            <input type="text" id="new-collection-name" class="form-control" placeholder="Назва нової колекції">
+            <button id="add-collection-btn" class="btn btn-success">Додати колекцію</button>
+        </div>
+        <label for="collection-select" class="form-label mt-3">Оберіть колекцію для відображення:</label>
+        <select id="collection-select" class="form-select">
+        </select>
+    </div>
+
+    <div class="mb-4">
+        <button id="delete-collection-btn" class="btn btn-danger" disabled>Видалити обрану колекцію</button>
+    </div>
+
+    <table class="table table-bordered table-hover">
+        <thead id="coll-info" class="table-dark">
+            <tr> </tr>
+        </thead>
+        <tbody id="coll-body">
+        </tbody>
+    </table>
+
+    <script>
+        const collectionSelect = document.getElementById('collection-select');
+        const deleteCollectionBtn = document.getElementById('delete-collection-btn');
+        document.getElementById('add-collection-btn').addEventListener('click', async () => {
+            const newCollectionName = document.getElementById('new-collection-name').value;
+
+            if (newCollectionName) {
+                try {
+                    const response = await fetch(`/api/collection/${newCollectionName}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Помилка: ${response.status}`);
+                    }
+
+                    alert('Нова колекція додана успішно!');
+                    fetchCollectionNames();
+                } catch (error) {
+                    console.error('Помилка додавання колекції:', error);
+                }
+            } else {
+                alert('Введіть назву колекції');
+            }
+        });
+        async function fetchCollectionData(collectionName) {
+            try {
+                const response = await fetch(`/api/collection/${collectionName}`);
+
+                if (!response.ok) {
+                    throw new Error(`Помилка: ${response.status}`);
+                }
+                const data = await response.json();
+
+                console.log(data)
+                const collInfo = document.getElementById('coll-info');
+                const collBody = document.getElementById('coll-body');
+
+                collInfo.innerHTML = '';
+                collBody.innerHTML = '';
+
+                let headerRow = document.createElement('tr');
+                data.fields.forEach(field => {
+                    let th = document.createElement('th');
+                    th.textContent = field;
+                    headerRow.appendChild(th);
+                });
+
+                let thUpdate = document.createElement('th');
+                thUpdate.textContent = 'Update';
+                headerRow.appendChild(thUpdate);
+
+                let thDelete = document.createElement('th');
+                thDelete.textContent = 'Delete';
+                headerRow.appendChild(thDelete);
+
+                collInfo.appendChild(headerRow);
+
+                data.documents.forEach(doc => {
+                    let row = document.createElement('tr');
+
+                    data.fields.forEach(field => {
+                        let cell = document.createElement('td');
+                        let input;
+
+                        if (typeof doc[field] === 'string') {
+                            input = document.createElement('input');
+                            input.type = 'text';
+                            input.value = doc[field];
+                            input.className = 'form-control w-75';
+                        } else if (typeof doc[field] === 'number') {
+                            input = document.createElement('input');
+                            input.type = 'number';
+                            input.value = doc[field];
+                            input.className = 'form-control w-75';
+                        } else if (typeof doc[field] === 'boolean') {
+                            input = document.createElement('input');
+                            input.type = 'checkbox';
+                            input.checked = doc[field];
+                        } else {
+                            input = document.createElement('input');
+                            input.type = 'text';
+                            input.value = doc[field] ? doc[field].toString() : '';
+                            input.className = 'form-control w-75';
+                        }
+
+                        cell.appendChild(input);
+                        row.appendChild(cell);
+                    });
+
+                    let updateCell = document.createElement('td');
+                    let updateButton = document.createElement('button');
+                    updateButton.textContent = 'Update';
+                    updateButton.classList.add('btn', 'btn-primary');
+                    updateButton.onclick = () => updateDocument(collectionName, doc._id, row);
+                    updateCell.appendChild(updateButton);
+                    row.appendChild(updateCell);
+
+                    let deleteCell = document.createElement('td');
+                    let deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.classList.add('btn', 'btn-danger');
+                    deleteButton.onclick = () => deleteDocument(collectionName, doc._id);
+                    deleteCell.appendChild(deleteButton);
+                    row.appendChild(deleteCell);
+
+                    collBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Помилка:', error);
+            }
+        }
+
+        async function updateDocument(collectionName, docId, row) {
+            const inputs = row.querySelectorAll('input');
+            let updatedData = {};
+
+            inputs.forEach((input, index) => {
+                let fieldName = document.querySelector(`#coll-info th:nth-child(${index + 1})`).textContent;
+                if (input.type === 'checkbox') {
+                    updatedData[fieldName] = input.checked;
+                } else if (input.type === 'number') {
+                    updatedData[fieldName] = parseFloat(input.value);
+                } else {
+                    updatedData[fieldName] = input.value;
+                }
+            });
+
+            try {
+                const response = await fetch(`/api/collection/${collectionName}/${docId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to update document: ${response.status}`);
+                }
+                alert('Документ оновлено успішно!');
+            } catch (error) {
+                console.error('Помилка оновлення:', error);
+            }
+        }
+
+        async function deleteDocument(collectionName, docId) {
+            try {
+                const response = await fetch(`/api/collection/${collectionName}/${docId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to delete document: ${response.status}`);
+                }
+                alert('Документ видалено успішно!');
+                fetchCollectionData(collectionName);
+            } catch (error) {
+                console.error('Помилка видалення:', error);
+            }
+        }
+
+        async function deleteCollection(collectionName) {
+            try {
+                const response = await fetch(`/api/collection/${collectionName}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to delete collection: ${response.status}`);
+                }
+                alert('Колекцію видалено успішно!');
+                fetchCollectionNames();
+            } catch (error) {
+                console.error('Помилка видалення колекції:', error);
+            }
+        }
+
+        function show_collection() {
+            const selectedCollection = collectionSelect.value;
+            if (selectedCollection) {
+                fetchCollectionData(selectedCollection);
+                deleteCollectionBtn.disabled = false;
+            } else {
+                collInfo.innerHTML = '';
+                collBody.innerHTML = '';
+                deleteCollectionBtn.disabled = true;
+            }
+        }
+        collectionSelect.addEventListener('change', function () {
+            show_collection();
+        });
+
+        deleteCollectionBtn.addEventListener('click', function () {
+            const selectedCollection = collectionSelect.value;
+            if (selectedCollection) {
+                deleteCollection(selectedCollection);
+            }
+        });
+        async function fetchCollectionNames() {
+            try {
+                const response = await fetch('/api/collections');
+                if (!response.ok) {
+                    throw new Error(`Помилка: ${response.status}`);
+                }
+                const collections = await response.json();
+
+                const collectionSelect = document.getElementById('collection-select');
+                collectionSelect.innerHTML = ""
+
+                collections.forEach(collectionName => {
+                    let option = document.createElement('option');
+                    option.value = collectionName;
+                    option.textContent = collectionName;
+                    collectionSelect.appendChild(option);
+                });
+                if (collections.length > 0) {
+                    show_collection();
+                }
+
+            } catch (error) {
+                console.error('Помилка отримання колекцій:', error);
+            }
+        }
+
+        fetchCollectionNames();
+    </script>
+
+</body>
+
+</html>
