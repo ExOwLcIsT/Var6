@@ -37,6 +37,54 @@ document.getElementById('add-collection-btn').addEventListener('click', async ()
         alert('Введіть назву колекції');
     }
 });
+
+async function updateColumn(oldColumnName, newColumnName, collectionName) {
+    try {
+        const response = await fetch(`/api/collections/${collectionName}/update_column`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                oldColumnName: oldColumnName,
+                newColumnName: newColumnName
+            })
+        });
+
+        if (response.ok) {
+            alert(`Колонку "${oldColumnName}" успішно змінено на "${newColumnName}"`);
+            fetchCollectionData(collectionName);
+        } else {
+            throw new Error(`Помилка: ${response.status}`);
+        }
+    } catch (error) {
+        alert(`Помилка зміни колонки: ${error}`);
+    }
+}
+
+async function deleteColumn(columnName, collectionName) {
+    try {
+        const response = await fetch(`/api/collections/${collectionName}/delete_column`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                columnName: columnName
+            })
+        });
+
+        if (response.ok) {
+            alert(`Колонку "${columnName}" успішно видалено`);
+            fetchCollectionData(collectionName);
+        } else {
+            throw new Error(`Помилка: ${response.status}`);
+        }
+    } catch (error) {
+        alert(`Помилка видалення колонки: ${ error}`);
+    }
+}
+
 async function fetchCollectionData(collectionName) {
     try {
         const response = await fetch(`/api/collections/${collectionName}`);
@@ -56,7 +104,34 @@ async function fetchCollectionData(collectionName) {
         let headerRow = document.createElement('tr');
         data.fields.forEach(field => {
             let th = document.createElement('th');
-            th.textContent = field;
+
+            let thText = document.createElement('span');
+            thText.textContent = field;
+
+            let editButton = document.createElement('button');
+            editButton.classList.add('btn', 'btn-sm', 'btn-warning', 'ms-2');
+            editButton.innerHTML = '<i class="bi bi-pencil"></i>'; // Іконка олівця
+            editButton.onclick = () => {
+                let newFieldName = prompt("Введіть нову назву для колонки:", field);
+                if (newFieldName) {
+                    updateColumn(thText.textContent, newFieldName, collectionName)
+                }
+            };
+
+            let deleteButton = document.createElement('button');
+            deleteButton.classList.add('btn', 'btn-sm', 'btn-danger', 'ms-2');
+            deleteButton.innerHTML = '<i class="bi bi-trash"></i>'; // Іконка сміттєвого бака
+            deleteButton.onclick = () => {
+                let confirmDelete = confirm(`Ви впевнені, що хочете видалити колонку "${field}"?`);
+                if (confirmDelete) {
+                    deleteColumn(field, collectionName);
+                }
+            };
+
+            th.appendChild(thText);
+            th.appendChild(editButton);
+            th.appendChild(deleteButton);
+
             headerRow.appendChild(th);
         });
 
@@ -69,8 +144,45 @@ async function fetchCollectionData(collectionName) {
         headerRow.appendChild(thDelete);
 
         collInfo.appendChild(headerRow);
+        let newRow = document.createElement('tr');
 
-        data.documents.forEach(doc => {
+        data.fields.forEach(field => {
+            let cell = document.createElement('td');
+            if (field !== "_id") {
+                let input;
+                if (typeof data.exampleDocument[field] === 'string') {
+                    input = document.createElement('input');
+                    input.type = Date.parse(data.exampleDocument[field]) ? 'date' : 'text';
+                    input.className = 'form-control w-100';
+                } else if (typeof data.exampleDocument[field] === 'number') {
+                    input = document.createElement('input');
+                    input.type = 'number';
+                    input.className = 'form-control w-100';
+                } else if (typeof data.exampleDocument[field] === 'boolean') {
+                    input = document.createElement('input');
+                    input.type = 'checkbox';
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'form-control w-100';
+                }
+                input.setAttribute("data-field-name", field);
+                cell.appendChild(input);
+            }
+            newRow.appendChild(cell);
+        });
+
+        let newButtonCell = document.createElement('td');
+        newButtonCell.colSpan = 2;
+        let createButton = document.createElement('button');
+        createButton.textContent = 'Create';
+        createButton.classList.add('btn', 'btn-success', "w-100");
+        createButton.onclick = () => createDocument(collectionName, newRow);
+        newButtonCell.appendChild(createButton);
+        newRow.appendChild(newButtonCell);
+
+        collBody.appendChild(newRow);
+        data.documents.forEach(doc => {  
             let row = document.createElement('tr');
 
             data.fields.forEach(field => {
@@ -127,43 +239,6 @@ async function fetchCollectionData(collectionName) {
 
             collBody.appendChild(row);
         });
-
-        let newRow = document.createElement('tr');
-
-        data.fields.forEach(field => {
-            let cell = document.createElement('td');
-            let input;
-            if (typeof data.exampleDocument[field] === 'string') {
-                input = document.createElement('input');
-                input.type = Date.parse(data.exampleDocument[field]) ? 'date' : 'text';
-                input.className = 'form-control w-100';
-            } else if (typeof data.exampleDocument[field] === 'number') {
-                input = document.createElement('input');
-                input.type = 'number';
-                input.className = 'form-control w-100';
-            } else if (typeof data.exampleDocument[field] === 'boolean') {
-                input = document.createElement('input');
-                input.type = 'checkbox';
-            } else {
-                input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'form-control w-100';
-            }
-
-            cell.appendChild(input);
-            newRow.appendChild(cell);
-        });
-
-        let newButtonCell = document.createElement('td');
-        newButtonCell.colSpan = 2;
-        let createButton = document.createElement('button');
-        createButton.textContent = 'Create';
-        createButton.classList.add('btn', 'btn-success');
-        createButton.onclick = () => createDocument(collectionName, newRow);
-        newButtonCell.appendChild(createButton);
-        newRow.appendChild(newButtonCell);
-
-        collBody.appendChild(newRow);
     } catch (error) {
         console.error('Помилка:', error);
     }
@@ -201,6 +276,48 @@ async function updateDocument(collectionName, docId, row) {
         console.error('Помилка оновлення:', error);
     }
 }
+
+
+async function createDocument(collectionName, newRow) {
+    try {
+        let newDoc = {};
+        const inputs = newRow.querySelectorAll('input');
+
+        inputs.forEach(input => {
+            const fieldName = input.getAttribute('data-field-name');
+            if (input.type === 'checkbox') {
+                newDoc[fieldName] = input.checked;
+            } else if (input.type === 'number') {
+                newDoc[fieldName] = parseFloat(input.value);
+            } else if (input.type === 'date') {
+                newDoc[fieldName] = input.value;
+            } else {
+                newDoc[fieldName] = input.value;
+            }
+        });
+        console.log(newDoc);
+        console.log(collectionName)
+        const response = await fetch(`/api/documents/${collectionName}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newDoc)
+        });
+
+        if (response.ok) {
+            alert('Документ успішно створено!');
+            fetchCollectionData(collectionName);
+        } else {
+            const errorData = await response.json();
+            alert(`Помилка: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Помилка:', error);
+    }
+}
+
+
 
 async function deleteDocument(collectionName, docId) {
     try {

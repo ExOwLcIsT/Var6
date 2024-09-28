@@ -22,6 +22,16 @@ def get_documents(collection_name):
         return jsonify({'error': str(e)}), 500
 
 
+@documents_bp.route('/documents/<collection_name>', methods=['POST'])
+@access_required("operator")
+def create_document(collection_name):
+    try:
+        db[collection_name].insert_one(request.json)
+        return jsonify({'message': 'Документ додано успішно'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @documents_bp.route('/documents/<collection_name>/<doc_id>', methods=['PUT'])
 @access_required("operator")
 def update_document(collection_name, doc_id):

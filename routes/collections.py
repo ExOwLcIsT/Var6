@@ -1,5 +1,7 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from pymongo import MongoClient
+
+from decorators.access_controls import access_required
 
 dbconnection = MongoClient('mongodb://localhost:27017/')
 db = dbconnection['enterprise']
@@ -14,6 +16,52 @@ def get_all_collections():
         return jsonify(collections), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@collections_bp.route('/collections/<collection_name>/update_column', methods=['PUT'])
+@access_required("admin")
+def update_column(collection_name):
+
+    data = request.json
+    old_column_name = data.get('oldColumnName')
+    new_column_name = data.get('newColumnName')
+
+    if not old_column_name or not new_column_name:
+        return jsonify({"error": "Назва старої та нової колонки є обов'язковими"}), 400
+
+    if old_column_name == "_id":
+        return jsonify({"error": "Не можна змінювати колонку _id"}), 400
+
+    try:
+        collection = db[collection_name]
+
+        collection.update_many(
+            {}, {'$rename': {old_column_name: new_column_name}})
+
+        return jsonify({"message": f"Колонку '{old_column_name}' змінено на '{new_column_name}'"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@collections_bp.route('/collections/<collection_name>/delete_column', methods=['DELETE'])
+@access_required("admin")
+def delete_column(collection_name):
+    data = request.json
+    column_name = data.get('columnName')
+
+    if not column_name:
+        return jsonify({"error": "Назва колонки є обов'язковою"}), 400
+
+    if column_name == "_id":
+        return jsonify({"error": "Не можна видалити поле _id"}), 400
+    try:
+        collection = db[collection_name]
+
+        collection.update_many({}, {'$unset': {column_name: ""}})
+
+        return jsonify({"message": f"Колонку '{column_name}' успішно видалено"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @collections_bp.route('/collections/<collection_name>', methods=['GET'])
@@ -47,6 +95,7 @@ def get_collection_data(collection_name):
 
 
 @collections_bp.route('/collections/<collection_name>', methods=['DELETE'])
+@access_required("owner")
 def delete_collection(collection_name):
     try:
         db.drop_collection(collection_name)
@@ -56,6 +105,7 @@ def delete_collection(collection_name):
 
 
 @collections_bp.route('/collections/<collection_name>', methods=['POST'])
+@access_required("owner")
 def create_collection(collection_name):
     try:
         db[collection_name].insert_one({"placeholder": True})
