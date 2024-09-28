@@ -16,7 +16,7 @@ def get_all_collections():
         return jsonify({'error': str(e)}), 500
 
 
-@collections_bp.route('/collection/<collection_name>', methods=['GET'])
+@collections_bp.route('/collections/<collection_name>', methods=['GET'])
 def get_collection_data(collection_name):
     try:
         collection = db[collection_name]
@@ -30,10 +30,14 @@ def get_collection_data(collection_name):
             for field in fields:
                 if (type(document[field]).__name__ == "ObjectId"):
                     document[field] = str(document[field])
+
+        example_document = {field: "" for field in fields}
+
         response = {
             "collection_name": collection_name,
             "fields": fields,
-            "documents": documents
+            "documents": documents,
+            "exampleDocument": example_document  # Add the example document to the response
         }
 
         return jsonify(response), 200
@@ -42,7 +46,7 @@ def get_collection_data(collection_name):
         return jsonify({"error": str(e)}), 500
 
 
-@collections_bp.route('/collection/<collection_name>', methods=['DELETE'])
+@collections_bp.route('/collections/<collection_name>', methods=['DELETE'])
 def delete_collection(collection_name):
     try:
         db.drop_collection(collection_name)
@@ -51,7 +55,7 @@ def delete_collection(collection_name):
         return jsonify({'error': str(e)}), 500
 
 
-@collections_bp.route('/collection/<collection_name>', methods=['POST'])
+@collections_bp.route('/collections/<collection_name>', methods=['POST'])
 def create_collection(collection_name):
     try:
         db[collection_name].insert_one({"placeholder": True})

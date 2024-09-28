@@ -2,28 +2,32 @@ from bson import ObjectId
 from flask import Blueprint, app, jsonify, request
 from pymongo import MongoClient
 
+from decorators.access_controls import access_required
+
 dbconnection = MongoClient('mongodb://localhost:27017/')
 db = dbconnection['enterprise']
 
 documents_bp = Blueprint('documents', __name__)
 
 
-@documents_bp.route('/api/documents/<collection_name>', methods=['GET'])
+@documents_bp.route('/documents/<collection_name>', methods=['GET'])
+@access_required("operator")
 def get_documents(collection_name):
     try:
         documents = list(db[collection_name].find())
         for doc in documents:
-            # Convert ObjectId to string for JSON serialization
             doc['_id'] = str(doc['_id'])
         return jsonify({'documents': documents}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
-@documents_bp.route('/api/documents/<collection_name>/<doc_id>', methods=['PUT'])
+@documents_bp.route('/documents/<collection_name>/<doc_id>', methods=['PUT'])
+@access_required("operator")
 def update_document(collection_name, doc_id):
     try:
         updated_data = request.json
+        updated_data['_id'] = ObjectId(updated_data['_id'])
         result = db[collection_name].update_one(
             {'_id': ObjectId(doc_id)}, {'$set': updated_data})
         if result.modified_count == 1:
@@ -31,10 +35,12 @@ def update_document(collection_name, doc_id):
         else:
             return jsonify({'message': 'Документ не знайдено або немає змін'}), 404
     except Exception as e:
+        print(str(e))
         return jsonify({'error': str(e)}), 500
 
 
-@documents_bp.route('/api/documents/<collection_name>/<doc_id>', methods=['DELETE'])
+@documents_bp.route('/documents/<collection_name>/<doc_id>', methods=['DELETE'])
+@access_required("operator")
 def delete_document(collection_name, doc_id):
     try:
         result = db[collection_name].delete_one({'_id': ObjectId(doc_id)})
