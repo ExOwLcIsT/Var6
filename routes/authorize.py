@@ -36,3 +36,27 @@ def login():
         return jsonify({'message': 'Вхід успішний!'}), 200
 
     return jsonify({'error': 'Неправильне ім`я користувача або пароль'}), 401
+
+
+@authorize_bp.route('/login/forgot-password', methods=['POST'])
+def forgot_password():
+    try:
+        data = request.json
+        username = data.get('username')
+
+        if not username:
+            return jsonify({'error': 'Необхідно вказати логін'}), 400
+
+        user = db.Keys.find_one({'username': username})
+
+        if not user:
+            return jsonify({'error': 'Користувач не знайдений'}), 404
+
+        password = user.get('password')
+
+        if not password:
+            return jsonify({'error': 'Пароль не знайдений'}), 404
+
+        return jsonify({'password': password}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

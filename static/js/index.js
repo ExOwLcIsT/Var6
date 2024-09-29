@@ -93,7 +93,7 @@ async function fetchCollectionData(collectionName) {
             throw new Error(`Помилка: ${response.status}`);
         }
         const data = await response.json();
-
+        document.getElementById('collection-name').value = collectionName;
         console.log(data)
         const collInfo = document.getElementById('coll-info');
         const collBody = document.getElementById('coll-body');
@@ -182,13 +182,15 @@ async function fetchCollectionData(collectionName) {
         newRow.appendChild(newButtonCell);
 
         collBody.appendChild(newRow);
-        data.documents.forEach(doc => {  
+        data.documents.forEach(doc => {
             let row = document.createElement('tr');
 
             data.fields.forEach(field => {
                 let cell = document.createElement('td');
                 let input;
-
+                if (typeof doc[field] === 'object') {
+                    doc[field] = JSON.stringify(doc[field]);
+                }
                 if (typeof doc[field] === 'string') {
                     if (Date.parse(doc[field])) {
                         input = document.createElement('input');
@@ -199,6 +201,7 @@ async function fetchCollectionData(collectionName) {
                         input = document.createElement('input');
                         input.type = 'text';
                         input.value = doc[field];
+
                         input.className = 'form-control w-100';
                     }
                 } else if (typeof doc[field] === 'number') {
@@ -418,5 +421,38 @@ function checkLoginStatus() {
         document.getElementById('logout-btn').style.display = 'none';
     }
 }
+
+document.getElementById('new-column-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const columnName = document.getElementById('column-name').value;
+    const columnType = document.getElementById('column-type').value;
+    const collectionName = document.getElementById('collection-name').value;
+    try {
+        const response = await fetch(`/api/collections/add-column/${collectionName}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                columnName: columnName,
+                columnType: columnType
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('Поле успішно додане');
+            fetchCollectionData(collectionName);
+        } else {
+            alert('Помилка: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Помилка:', error);
+        document.getElementById('column-feedback').textContent = 'Помилка при додаванні колонки';
+    }
+});
+
 checkLoginStatus();
 fetchCollectionNames();

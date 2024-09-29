@@ -1,128 +1,101 @@
 from pymongo import MongoClient
 from bson import ObjectId
+import datetime
+from datetime import datetime
 
-# Підключення до локальної MongoDB
-client = MongoClient('mongodb://localhost:27017/')
-db = client['enterprise']
-
-# Тестові дані для колекції "workshops"
-workshops_data = [
-    {
-        "_id": ObjectId(),
-        "name": "Workshop A",
-        "sections": [
-            {
-                "_id": ObjectId(),
-                "name": "Section 1",
-                "chief": {
-                    "name": "John Doe",
-                    "position": "Section Chief",
-                    "personnel": [
-                        {
-                            "name": "Jane Smith",
-                            "position": "Master",
-                            "brigades": [
-                                {
-                                    "brigadier": "Mark Johnson",
-                                    "workers": [
-                                        {"name": "Worker 1", "position": "Assembler"},
-                                        {"name": "Worker 2", "position": "Turner"}
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                }
-            }
-        ]
-    }
-]
-
-# Тестові дані для колекції "products"
-products_data = [
-    {
-        "_id": ObjectId(),
-        "category": "Civil Aircraft",
-        "type": "Passenger Plane",
-        "attributes": {
-            "engine_count": 2,
-            "capacity": 150
+# Initialize MongoDB client
+dbconnection = MongoClient('mongodb://localhost:27017/')
+db = dbconnection['enterprise']  # Replace with your database name
+# Workshops Collection
+workshop_id = ObjectId()
+db.workshops.insert_one({
+    "_id": workshop_id,
+    "name": "Main Workshop",
+    "staff": [
+        { "name": "John Doe", "position": "Engineer" },
+        { "name": "Jane Smith", "position": "Technician" }
+    ],
+    "sections": [
+        {
+            "name": "Assembly",
+            "chief": "Alice Johnson"
         },
-        "assembly": {
-            "workshop_id": ObjectId(),  # Використовуй реальний _id майстерні
-            "sections": [
-                {
-                    "section_id": ObjectId(),  # Використовуй реальний _id секції
-                    "brigade_id": ObjectId(),  # Використовуй реальний _id бригади
-                    "start_date": "2024-01-01",
-                    "end_date": "2024-02-15"
-                }
-            ]
-        },
-        "tests": [
-            {
-                "lab_id": ObjectId(),  # Використовуй реальний _id лабораторії
-                "equipment": ["Equipment A", "Equipment B"],
-                "testers": [
-                    {"name": "Tester 1"},
-                    {"name": "Tester 2"}
-                ],
-                "date": "2024-03-01"
-            }
-        ]
-    }
-]
+        {
+            "name": "Testing",
+            "chief": "Bob Brown"
+        }
+    ]
+})
 
-# Тестові дані для колекції "labs"
-labs_data = [
+# Insert sample data into Products collection
+product_a_id = ObjectId()
+product_b_id = ObjectId()
+db.products.insert_many([
     {
-        "_id": ObjectId(),
-        "name": "Test Lab 1",
-        "workshops_serviced": [ObjectId(), ObjectId()],  # Використовуй реальні _id майстерень
-        "equipment": [
-            {
-                "name": "Equipment A",
-                "type": "Pressure Tester",
-                "tests": [
-                    {
-                        "product_id": ObjectId(),  # Використовуй реальний _id продукту
-                        "date": "2024-03-01",
-                        "testers": [
-                            {"name": "Tester 1"},
-                            {"name": "Tester 2"}
-                        ]
-                    }
-                ]
-            }
-        ]
-    }
-]
-
-# Тестові дані для колекції "personnel"
-personnel_data = [
+        "_id": product_a_id,
+        "name": "Product A",
+        "workshop_id": workshop_id,
+        "date": datetime(2024, 1, 1),
+        "test_date": datetime(2024, 1, 15)
+    },
     {
-        "_id": ObjectId(),
-        "name": "Jane Smith",
-        "position": "Master",
-        "workshop_id": ObjectId(),  # Використовуй реальний _id майстерні
-        "section_id": ObjectId(),  # Використовуй реальний _id секції
-        "brigade_id": ObjectId(),  # Використовуй реальний _id бригади
-        "category": "Engineering Staff",
-        "works_on": [
-            {
-                "product_id": ObjectId(),  # Використовуй реальний _id продукту
-                "role": "Supervisor",
-                "start_date": "2024-01-01",
-                "end_date": "2024-02-15"
-            }
-        ]
+        "_id": product_b_id,
+        "name": "Product B",
+        "workshop_id": workshop_id,
+        "date": datetime(2024, 2, 1),
+        "test_date": datetime(2024, 2, 15)
     }
-]
+])
 
-# Вставка даних у відповідні колекції
-db.workshops.insert_many(workshops_data)
-db.products.insert_many(products_data)
-db.labs.insert_many(labs_data)
-db.personnel.insert_many(personnel_data)
+# Insert sample data into Laboratories collection
+db.laboratories.insert_one({
+    "_id": ObjectId(),
+    "name": "Lab A",
+    "tests": [
+        { "product_id": product_a_id },
+        { "product_id": product_b_id }
+    ]
+})
 
-print("Дані успішно вставлені в базу даних.")
+# Insert sample data into Works collection
+db.works.insert_one({
+    "_id": ObjectId(),
+    "product_id": product_a_id,
+    "description": "Assembly process"
+})
+
+# Insert sample data into Equipment collection
+db.equipment.insert_one({
+    "_id": ObjectId(),
+    "name": "Equipment A",
+    "tests": [
+        { "product_id": product_a_id }
+    ]
+})
+
+# Insert sample data into Brigades collection
+db.brigades.insert_one({
+    "_id": ObjectId(),
+    "workshop_id": workshop_id,
+    "section_id": workshop_id,
+    "members": [
+        { "name": "Mike Green", "role": "Worker" },
+        { "name": "Laura White", "role": "Helper" }
+    ]
+})
+
+# Insert sample data into Masters collection
+db.masters.insert_one({
+    "_id": ObjectId(),
+    "workshop_id": workshop_id,
+    "name": "Frank Black"
+})
+
+# Insert sample data into Employees collection
+db.employees.insert_one({
+    "_id": ObjectId(),
+    "tests": [
+        { "product_id": product_a_id }
+    ],
+    "name": "Sara Blue"
+})

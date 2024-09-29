@@ -116,3 +116,37 @@ document.getElementById('register-btn').addEventListener('click', async () => {
         registerError.textContent = 'Сталася помилка при реєстрації.';
     }
 });
+
+document.getElementById('forgot-password-btn').addEventListener('click', async () => {
+    const username = document.getElementById('login-username').value;
+
+    if (!username) {
+        document.getElementById('login-username-error').textContent = 'Введіть логін для відновлення паролю';
+        return;
+    }
+
+    document.getElementById('login-username-error').textContent = '';
+
+    try {
+        const response = await fetch('/api/login/forgot-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                username: username
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            document.getElementById('forgot-password-response').textContent = 'Ваш пароль: ' + data.password;
+        } else {
+            document.getElementById('forgot-password-response').textContent = 'Помилка: ' + data.error;
+        }
+    } catch (error) {
+        console.error('Помилка:', error);
+        document.getElementById('forgot-password-response').textContent = 'Помилка при відновленні паролю';
+    }
+});

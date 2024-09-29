@@ -11,14 +11,16 @@ documents_bp = Blueprint('documents', __name__)
 
 
 @documents_bp.route('/documents/<collection_name>', methods=['GET'])
-@access_required("operator")
 def get_documents(collection_name):
     try:
         documents = list(db[collection_name].find())
         for doc in documents:
-            doc['_id'] = str(doc['_id'])
+            for key in doc.keys():
+                if (type(doc[key]).__name__ == "ObjectId"): 
+                    doc[key] = str(doc[key])
         return jsonify({'documents': documents}), 200
     except Exception as e:
+        print (e)
         return jsonify({'error': str(e)}), 500
 
 

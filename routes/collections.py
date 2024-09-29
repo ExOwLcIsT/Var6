@@ -1,5 +1,7 @@
-from flask import Blueprint, jsonify, request
+from datetime import datetime
+from flask import Blueprint, Response, json, jsonify, request
 from pymongo import MongoClient
+from bson import json_util
 
 from decorators.access_controls import access_required
 
@@ -79,16 +81,16 @@ def get_collection_data(collection_name):
                 if (type(document[field]).__name__ == "ObjectId"):
                     document[field] = str(document[field])
 
-        example_document = {field: "" for field in fields}
+        example_document = collection.find_one({});
 
         response = {
             "collection_name": collection_name,
             "fields": fields,
             "documents": documents,
-            "exampleDocument": example_document  # Add the example document to the response
+            "exampleDocument": example_document
         }
 
-        return jsonify(response), 200
+        return Response(json_util.dumps(response), mimetype='application/json'), 200
     except Exception as e:
         print(str(e))
         return jsonify({"error": str(e)}), 500
@@ -110,5 +112,37 @@ def create_collection(collection_name):
     try:
         db[collection_name].insert_one({"placeholder": True})
         return jsonify({'message': f'Колекція {collection_name} створена успішно'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@collections_bp.route('/collections/add-column/<collectionName>', methods=['POST'])
+def add_column(collectionName):
+    try:
+        data = request.json
+        print(data)
+        column_name = data.get('columnName')
+        column_type = data.get('columnType')
+
+        if not column_name or not column_type:
+            return jsonify({'error': 'Некоректні дані'}), 400
+
+        collection = db[collectionName]
+
+        if column_type == 'string':
+            default_value = ''
+        elif column_type == 'number':
+            default_value = 0
+        elif column_type == 'date':
+            default_value =  datetime.now().strftime("%Y-%m-%d")
+        elif column_type == 'boolean':
+            default_value = False
+        else:
+            return jsonify({'error': 'Невідомий тип даних'}), 400
+
+        collection.update_many({}, {'$set': {column_name: default_value}})
+
+        return jsonify({'message': 'Колонка успішно додана'}), 201
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
