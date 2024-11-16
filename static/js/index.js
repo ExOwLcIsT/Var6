@@ -84,7 +84,10 @@ async function deleteColumn(columnName, collectionName) {
         alert(`Помилка видалення колонки: ${ error}`);
     }
 }
-
+const isValidYYYYMMDD = (value) => {
+    const regex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+    return regex.test(value);
+};
 async function fetchCollectionData(collectionName) {
     try {
         const response = await fetch(`/api/collections/${collectionName}`);
@@ -192,16 +195,17 @@ async function fetchCollectionData(collectionName) {
                     doc[field] = JSON.stringify(doc[field]);
                 }
                 if (typeof doc[field] === 'string') {
-                    if (Date.parse(doc[field])) {
+                    if (isValidYYYYMMDD(doc[field])) {             
+                        console.log(doc[field])           
                         input = document.createElement('input');
+                        console.log(new Date(doc[field]))
                         input.type = 'date';
-                        input.value = new Date(doc[field]).toISOString().split('T')[0]; // Формат YYYY-MM-DD
+                        input.value = new Date(doc[field]).toISOString().split('T')[0];
                         input.className = 'form-control w-100';
                     } else {
                         input = document.createElement('input');
                         input.type = 'text';
                         input.value = doc[field];
-
                         input.className = 'form-control w-100';
                     }
                 } else if (typeof doc[field] === 'number') {
